@@ -1,0 +1,24 @@
+/*1. Процедура получает в качестве входного параметра ФИО автора и возвращает информацию о его публикациях. */
+CREATE DEFINER = 'root'@'localhost'
+PROCEDURE bookby(in fio VARCHAR(50))
+BEGIN
+SELECT naimenovanie AS book, quotation AS quotation, publication_date
+FROM publication
+JOIN publication_has_author ON (publication.id=publication_has_author.publication_id)
+JOIN author ON (publication_has_author.author_id=author.id)
+WHERE fullname LIKE fio
+ORDER BY naimenovanie;
+END 
+
+/*2. Процедура для добавления нового автора. Входные параметры - id, ФИО автора, организация, в которой тот работает или учится, подразделение, должность и пол. */
+CREATE DEFINER='root'@'localhost'
+PROCEDURE createAuthor( in id INT,
+in fname varchar(45),
+in org varchar(45),
+in ord_podr varchar(45),
+in dol varchar(45),
+in gender varchar(10))
+BEGIN
+INSERT INTO author (id, fullname, organization, org_podrazdelenie, doljnost, gender)
+VALUES (id, fname, org, org_podr, dol, gender);
+END

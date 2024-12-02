@@ -1,0 +1,79 @@
+*/Триггеры для бд*/
+/* 
+/*DROP TRIGGER fullname_author;*/
+
+/*1. Данный триггер преобразует вводимые данные в поле fullname так, что первые буквы фамилии, имени и отчества становятся прописными, а остальные – строчными (в соответствие орфографии русского языка). */
+/*
+DELIMITER $$
+CREATE TRIGGER fullname_author
+BEFORE INSERT ON author
+FOR EACH ROW
+BEGIN
+DECLARE firstname varchar(20);
+DECLARE middlename varchar(20);
+DECLARE lastname varchar(20);
+SET lastname = SUBSTRING_INDEX(new.fullname,' ', 1);
+SET firstname = SUBSTRING_INDEX(SUBSTRING_INDEX(new.fullname, ' ', 2),' ', -1);
+SET middlename = SUBSTRING_INDEX(new.fullname,' ', -1);
+SET new.fullname = IF (STRCMP(firstname, middlename)=0,  CONCAT( UPPER( LEFT( lastname, 1)) , LOWER ( SUBSTRING(lastname, 2)), ' ', UPPER( LEFT( firstname, 1)) , LOWER ( SUBSTRING(firstname, 2))), CONCAT( UPPER( LEFT( lastname, 1)) , LOWER ( SUBSTRING(lastname, 2)), ' ', UPPER( LEFT( firstname, 1)) , LOWER ( SUBSTRING(firstname, 2)), ' ', UPPER( LEFT( middlename, 1)) , LOWER ( SUBSTRING(middlename, 2))));
+END $$
+
+
+DROP TRIGGER publ_qotation_in*/
+/*2. В таблице «publication» есть поле quotation (количество цитирований конкретной публикации в других работах). Количество цитирований не может быть отрицательным. Реализованный триггер publ_qotation_in не позволяет пользователю вводить отрицательные значения в данное поле, а триггер publ_qotation_up – изменять текущее значение на отрицательное.*/
+DELIMITER $$
+
+CREATE TRIGGER publ_qotation_in
+BEFORE INSERT ON publication
+FOR EACH ROW BEGIN
+IF (new.quotation < 0) THEN
+SIGNAL SQLSTATE '02000' SET MESSAGE_TEXT = 'Warning: quotation < 0!';
+END IF;
+END$$
+
+DELIMITER ;
+
+DELIMITER $$
+
+CREATE TRIGGER publ_qotation_up
+BEFORE UPDATE ON publication
+FOR EACH ROW BEGIN
+IF (new.quotation < 0) THEN
+SIGNAL SQLSTATE '02000' SET MESSAGE_TEXT = 'Warning: quotation < 0!';
+END IF;
+END$$
+
+DELIMITER ;*/
+
+DROP TRIGGER sum_quot_afterisert
+
+/*В таблице «journal» есть поле amount_quotation, которое содержит в себе суммарную цитируемость всех публикаций конкретного журнала. Ниже представлены триггеры, которые будут обновлять значения в данном столбце, если происходит добавление, изменение или удаление научной публикации конкретного журнала.
+3. Триггер sum_quot_afterinsert срабатывает непосредственно после добавления новой записи в таблицу «publication» и изменяет данные в таблице «journal», прибавляя новое значение, добавляемое в поле quotation таблицы «publication», к текущему значению в поле amount_quotation таблицы «journal». */
+DELIMITER $$
+CREATE TRIGGER sum_quot_afterinsert
+AFTER INSERT ON publication
+FOR EACH ROW
+BEGIN
+UPDATE journal SET journal.amount_quotation = journal.amount_quotation + new.quotation
+WHERE journal.id = new.journal_id;
+END $$
+
+/*4. Триггер sum_quot_afterdelete срабатывает после удаления. Данные таблицы «journal» обновляются при удалении записи из «publication», точнее из поля amount_quotation таблицы «journal» вычитается значение в поле quotation удаляемой записи таблицы «publication». */
+DELIMITER $$
+CREATE TRIGGER sum_quot_afterdelete
+AFTER DELETE ON publication
+FOR EACH ROW
+BEGIN
+UPDATE journal SET journal.amount_quotation = journal.amount_quotation - old.quotation
+WHERE journal.id = old.journal_id;
+END $$
+
+/*5. Триггер sum_quot_afterupdate срабатывает после изменения записи в таблице «publication» и обновляет данные в таблице «journal», сперва вычитая предыдущее значение в поле quotation таблицы «publication» из текущего значения в поле amount_quotation таблицы «journal», затем прибавляя новое значение. */
+DELIMITER $$
+CREATE TRIGGER sum_quot_afterupdate
+AFTER UPDATE ON publication
+FOR EACH ROW
+BEGIN
+UPDATE journal SET journal.amount_quotation = journal.amount_quotation - old.quotation + new.quotation
+WHERE journal.id = new.journal_id;
+END $$
